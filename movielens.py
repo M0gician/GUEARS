@@ -156,15 +156,18 @@ def load_movielens_items(
 
 def save_to_pickle(df: pd.DataFrame, path: str):
     interactions = df.pivot_table(
-        values='rating',
+        values=['rating', 'timestamp'],
         index=['userID', 'itemID'],
         aggfunc=lambda x: x
-    )
+    ).sort_values(by=['timestamp'], ascending=True)
+
     users, items = torch.from_numpy(np.array(interactions.index.codes))
     ratings = torch.from_numpy(interactions['rating'].to_numpy())
+    timestamps = torch.from_numpy(interactions['timestamp'].to_numpy())
     torch.save(users, os.path.join(path, 'users.pt'))
     torch.save(items, os.path.join(path, 'items.pt'))
     torch.save(ratings, os.path.join(path, 'ratings.pt'))
+    torch.save(timestamps, os.path.join(path, 'timestamps.pt'))
 
 
 if __name__ == "__main__":
