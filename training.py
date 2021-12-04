@@ -12,6 +12,8 @@ class Trainer:
         self.user_embedding = user_embedding
         self.item_embedding = item_embedding
 
+        if self.args['pretrained']:
+            self.load_model()
 
     def train_epoch(self):
         loss_total = 0
@@ -55,6 +57,8 @@ class Trainer:
             self.optimizer.step()
             loss_total += loss.detach().cpu().item()
 
+        self.save_model()
+
         return loss_total
 
     def get_user_embedding(self, user_id):
@@ -64,7 +68,27 @@ class Trainer:
         return self.item_embedding(item_id)
 
     def save_model(self):
-        pass
+        model_path = self.args['model_params']
+        with open(model_path, 'w') as f:
+            torch.save(self.model.state_dict(), f)
+
+        user_embeds_path = self.args['user_embeds_params']
+        with open(user_embeds_path, 'w') as f:
+            torch.save(self.user_embedding.state_dict(), f)
+
+        item_embeds_path = self.args['item_embeds_params']
+        with open(item_embeds_path, 'w') as f:
+            torch.save(self.item_embedding.state_dict(), f)
 
     def load_model(self):
-        pass
+        model_path = self.args['model_params']
+        with open(model_path, 'r') as f:
+            self.model.load_state_dict(torch.load(f))
+
+        user_embeds_path = self.args['user_embeds_params']
+        with open(user_embeds_path, 'r') as f:
+            self.user_embedding.load_state_dict(torch.load(f))
+
+        item_embeds_path = self.args['item_embeds_params']
+        with open(item_embeds_path, 'r') as f:
+            self.item_embedding.load_state_dict(torch.load(f))

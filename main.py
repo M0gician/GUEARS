@@ -46,7 +46,11 @@ def train(user_dataset):
         "state_dim": state_dim,
         "action_dim": action_dim,
         "user_count": user_count,
-        "item_count": item_count
+        "item_count": item_count,
+        "model_params": "checkpoints/model.pt",
+        "user_embeds_params": "checkpoints/user.pt",
+        "item_embeds_params": "checkpoints/item.pt",
+        "pretrained": False
     }
     trainer = Trainer(train_loader, model, user_embedding, item_embedding, optimizer, device, args)
 
