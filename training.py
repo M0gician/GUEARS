@@ -2,15 +2,16 @@ import torch
 import torch.nn as nn
 
 class Trainer:
-    def __init__(self, data, model, optimizer, args):
+    def __init__(self, data, model, user_embedding, item_embedding, optimizer, device, args):
         self.data = data
         self.model = model
         self.optimizer = optimizer
-        self.loss_fn = lambda s_hat, a_hat, r_hat, s, a, r: torch.mean((a_hat - a)**2)
+        self.loss_fn = nn.SmoothL1Loss()
+        self.device = device
         self.args = args
+        self.user_embedding = user_embedding
+        self.item_embedding = item_embedding
 
-        self.user_embedding = nn.Embedding(args['user_count'], args['state_dim'])
-        self.item_embedding = nn.Embedding(args['item_count'], args['state_dim'])
 
     def train_epoch(self):
         loss_total = 0
@@ -24,22 +25,20 @@ class Trainer:
             actions = self.item_embedding(item_ids)
 
             timesteps = torch.arange(0, 737).unsqueeze(0).repeat(item_ids.shape[0], 1)
-            # set prediction target
-            action_target = torch.clone(actions)
             attention_mask = torch.ones_like(rewards).squeeze()
 
-            states = states[:, :320]
-            actions = actions[:, :320]
-            rewards = rewards[:, :320]
-            rtg = rtg[:, :321]
-            timesteps = timesteps[:, :320]
-            attention_mask = attention_mask[:, :320]
+            states = states[:, :341].to(self.device)
+            actions = actions[:, :341].to(self.device)
+            rewards = rewards[:, :341].to(self.device)
+            rtg = rtg[:, :341].to(self.device)
+            timesteps = timesteps[:, :341].to(self.device)
+            attention_mask = attention_mask[:, :341].to(self.device)
             action_target = actions.clone()
-            print(states.shape, actions.shape, rewards.shape, rtg[:,:-1].shape, timesteps.shape, attention_mask.shape)
+            # print(states.shape, actions.shape, rewards.shape, rtg.shape, timesteps.shape, attention_mask.shape)
 
             # do forward
             state_preds, action_preds, reward_preds = self.model.forward(
-                states, actions, rewards, rtg[:,:-1], timesteps, attention_mask=attention_mask,
+                states, actions, rewards, rtg, timesteps, attention_mask=attention_mask,
             )
 
             # compute loss
@@ -47,10 +46,7 @@ class Trainer:
             action_preds = action_preds.reshape(-1, act_dim)[attention_mask.reshape(-1) > 0]
             action_target = action_target.reshape(-1, act_dim)[attention_mask.reshape(-1) > 0]
 
-            loss = self.loss_fn(
-                None, action_preds, None,
-                None, action_target, None,
-            )
+            loss = self.loss_fn(action_target, action_preds)
 
             # optimize
             self.optimizer.zero_grad()
@@ -60,6 +56,12 @@ class Trainer:
             loss_total += loss.detach().cpu().item()
 
         return loss_total
+
+    def get_user_embedding(self, user_id):
+        return self.user_embedding(user_id)
+
+    def get_item_embedding(self, item_id):
+        return self.item_embedding(item_id)
 
     def save_model(self):
         pass
