@@ -8,14 +8,14 @@ from training import Trainer
 
 def train(user_dataset):
     # prepare args
-    state_dim = 128
-    action_dim = 128
+    state_dim = 512
+    action_dim = 512
     user_count = 943
     item_count = 1682
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    epochs = 10
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    epochs = 50
     learning_rate = 1e-4
-    batch_size = 64
+    batch_size = 128
 
     # prepare data loader
     train_loader = DataLoader(user_dataset, batch_size=batch_size, shuffle=True, num_workers=16)
@@ -26,10 +26,10 @@ def train(user_dataset):
         act_dim=action_dim,         # action embedding dimension
         max_length=737,             # max sequence length
         max_ep_len=1000,            # maximum episode length
-        hidden_size=128,            # hidden_size of the model
+        hidden_size=512,            # hidden_size of the model
         n_layer=3,                  # number of layers
         n_head=1,                   # number of attention heads
-        n_inner=4 * 128,
+        n_inner=4 * 512,
         activation_function='relu',     # internal activation function
         n_positions=1024,
         resid_pdrop=0.1,

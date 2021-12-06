@@ -20,6 +20,12 @@ class Trainer:
         for i, train_batch in enumerate(self.data):
             # unpack data
             user_ids, item_ids, rewards, rtg, timesteps = train_batch
+            user_ids = user_ids.to(self.device)
+            item_ids = item_ids.to(self.device)
+            rewards = rewards.to(self.device)
+            rtg = rtg.to(self.device)
+            timesteps = timesteps.to(self.device)
+
             user_ids = user_ids.unsqueeze(-1).repeat(1, item_ids.shape[1])
             rewards = rewards.unsqueeze(-1)
             rtg = rtg.unsqueeze(-1)
@@ -69,16 +75,19 @@ class Trainer:
 
     def save_model(self):
         model_path = self.args['model_params']
-        with open(model_path, 'w') as f:
-            torch.save(self.model.state_dict(), f)
+        torch.save(self.model.state_dict(), model_path)
+        # with open(model_path, 'w') as f:
+            # torch.save(self.model.state_dict(), f)
 
         user_embeds_path = self.args['user_embeds_params']
-        with open(user_embeds_path, 'w') as f:
-            torch.save(self.user_embedding.state_dict(), f)
+        torch.save(self.model.state_dict(), user_embeds_path)
+        # with open(user_embeds_path, 'w') as f:
+            # torch.save(self.user_embedding.state_dict(), f)
 
         item_embeds_path = self.args['item_embeds_params']
-        with open(item_embeds_path, 'w') as f:
-            torch.save(self.item_embedding.state_dict(), f)
+        torch.save(self.item_embedding.state_dict(), item_embeds_path)
+        # with open(item_embeds_path, 'w') as f:
+            # torch.save(self.item_embedding.state_dict(), f)
 
     def load_model(self):
         model_path = self.args['model_params']
