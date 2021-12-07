@@ -4,33 +4,9 @@ import torch
 import numpy as np
 import pandas as pd
 
-GENRES = (
-    "unknown",
-    "Action",
-    "Adventure",
-    "Animation",
-    "Children's",
-    "Comedy",
-    "Crime",
-    "Documentary",
-    "Drama",
-    "Fantasy",
-    "Film-Noir",
-    "Horror",
-    "Musical",
-    "Mystery",
-    "Romance",
-    "Sci-Fi",
-    "Thriller",
-    "War",
-    "Western",
-)
-
-DEFAULT_HEADER = (
-    "userID",
-    "itemID",
-    "rating",
-    "timestamp",
+from src.utils.consts import (
+    GENRES,
+    DEFAULT_HEADER
 )
 
 
@@ -154,7 +130,7 @@ def load_movielens_items(
     return item_df
 
 
-def save_to_pickle(df: pd.DataFrame, path: str):
+def save_to_pickle(df: pd.DataFrame, path: str, prefix=None):
     interactions = df.pivot_table(
         values=['rating', 'timestamp'],
         index=['userID', 'itemID'],
@@ -164,15 +140,14 @@ def save_to_pickle(df: pd.DataFrame, path: str):
     users, items = torch.from_numpy(np.array(interactions.index.codes))
     ratings = torch.from_numpy(interactions['rating'].to_numpy())
     timestamps = torch.from_numpy(interactions['timestamp'].to_numpy())
-    torch.save(users, os.path.join(path, 'users.pt'))
-    torch.save(items, os.path.join(path, 'items.pt'))
-    torch.save(ratings, os.path.join(path, 'ratings.pt'))
-    torch.save(timestamps, os.path.join(path, 'timestamps.pt'))
-
-
-if __name__ == "__main__":
-    print("Loading data from Movielens100k...")
-    df = load_movielens()
-    print("Saving to pickle...")
-    save_to_pickle(df, "ml-100k/")
-    print("Done!")
+    if not prefix:
+        torch.save(users, os.path.join(path, 'users.pt'))
+        torch.save(items, os.path.join(path, 'items.pt'))
+        torch.save(ratings, os.path.join(path, 'ratings.pt'))
+        torch.save(timestamps, os.path.join(path, 'timestamps.pt'))
+    else:
+        isinstance(prefix, str)
+        torch.save(users, os.path.join(path, prefix+'users.pt'))
+        torch.save(items, os.path.join(path, prefix+'items.pt'))
+        torch.save(ratings, os.path.join(path, prefix+'ratings.pt'))
+        torch.save(timestamps, os.path.join(path, prefix+'timestamps.pt'))

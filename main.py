@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 from models.decision_transformer import DecisionTransformer
 from torch.utils.data import DataLoader
-from dataloader import UserDataset
+from datasets.dataloader import UserDataset
 from training import Trainer
 
 def train(user_dataset):
