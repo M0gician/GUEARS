@@ -23,24 +23,44 @@ class UserDataset(torch.utils.data.Dataset):
         tensor += 1.0
         return tensor / tensor.max()
 
-    def __init__(self, path=MOVIELENS_PATH):
+    def __init__(self, path=MOVIELENS_PATH, mode='train'):
         self.path = path
-        self.users = torch.load(os.path.join(self.path, "users.pt"))
-        self.items = torch.load(os.path.join(self.path, "items.pt"))
-        self.ratings = torch.load(os.path.join(self.path, "ratings.pt"))
-        self.timestamps = torch.load(os.path.join(self.path, "timestamps.pt"))
+        if mode == 'train':
+            self.users = torch.load(os.path.join(self.path, "trainusers.pt"))
+            self.items = torch.load(os.path.join(self.path, "trainitems.pt"))
+            self.ratings = torch.load(os.path.join(self.path, "trainratings.pt"))
+            self.timestamps = torch.load(os.path.join(self.path, "traintimestamps.pt"))
+
+            self.test_users = torch.load(os.path.join(self.path, "valusers.pt"))
+            self.test_items = torch.load(os.path.join(self.path, "valitems.pt"))
+            self.test_ratings = torch.load(os.path.join(self.path, "valratings.pt"))
+            self.test_timestamps = torch.load(os.path.join(self.path, "valtimestamps.pt"))
+        elif mode == 'test':
+            self.users = torch.load(os.path.join(self.path, "b_trainusers.pt"))
+            self.items = torch.load(os.path.join(self.path, "b_trainitems.pt"))
+            self.ratings = torch.load(os.path.join(self.path, "b_trainratings.pt"))
+            self.timestamps = torch.load(os.path.join(self.path, "b_traintimestamps.pt"))
+
+            self.test_users = torch.load(os.path.join(self.path, "b_testusers.pt"))
+            self.test_items = torch.load(os.path.join(self.path, "b_testitems.pt"))
+            self.test_ratings = torch.load(os.path.join(self.path, "b_testratings.pt"))
+            self.test_timestamps = torch.load(os.path.join(self.path, "b_testtimestamps.pt"))
 
         self.idx = torch.stack((self.users, self.items), axis=0)
         self.numUsers, self.numItems = int(
             torch.max(self.users))+1, int(torch.max(self.items))+1
+        self.test_idx = torch.stack((self.test_users, self.test_items), axis=0)
+        self.test_numUsers, self.test_numItems = int(
+            torch.max(self.test_users))+1, int(torch.max(self.test_items))+1
+
         self.rating_interactions = self.vec_to_sparse(
             self.users, self.items, self.ratings,
-            size=(self.numUsers, self.numItems),
+            size=(max(self.numUsers, self.test_numUsers), max(self.numItems, self.test_numItems)),
             load_full=False,
         )
         self.time_interactions = self.vec_to_sparse(
             self.users, self.items, self.timestamps,
-            size=(self.numUsers, self.numItems),
+            size=(max(self.numUsers, self.test_numUsers), max(self.numItems, self.test_numItems)),
             load_full=False,
         )
 
@@ -78,6 +98,16 @@ class UserDataset(torch.utils.data.Dataset):
                 s -= r
                 self.user_rating_togo_map[uid][i+1] = s
 
+        self.test_rating_interactions = self.vec_to_sparse(
+            self.test_users, self.test_items, self.test_ratings,
+            size=(max(self.numUsers, self.test_numUsers), max(self.numItems, self.test_numItems)),
+            load_full=True,
+        )
+        self.test_time_interactions = self.vec_to_sparse(
+            self.test_users, self.test_items, self.test_timestamps,
+            size=(max(self.numUsers, self.test_numUsers), max(self.numItems, self.test_numItems)),
+            load_full=False,
+        )
 
     def get_indices(self) -> torch.Tensor:
         return self.idx
@@ -108,77 +138,6 @@ class UserDataset(torch.utils.data.Dataset):
         time = F.pad(
             self.user_time_map[uID], (0, len_diff), "constant", 0
         )
+        solution = self.normalize(self.test_rating_interactions[uID])
 
-        return uID, items, ratings, ratings_togo, time
-
-
-if __name__ == '__main__':
-    """
-    0. Flags
-        load_full: bool
-        if `load_full` is True, any function which takes this flag will return a full matrix
-        otherwise, it will return in the form of a spared matrix
-    """
-
-    """
-    1. Load the unmodified dataset
-    """
-    user_dataset = UserDataset()
-
-    """
-    2. Access attributes within the Dataset object
-    """
-    # return indices for all valid entries within the dataset
-    # returned value will be a 2d-matrix,
-    # with 1st row as row indices and 2nd row as col indices
-    indices = user_dataset.get_indices()
-
-    # return the user-item Interaction matrices (ratings/timestamps)
-    # Dim: numUsers x numItems
-    ratings = user_dataset.get_ratings(load_full=True)
-    timestamps = user_dataset.get_timestamps(load_full=True)
-
-    # ...or you can access the dataset by index (through the getter function)
-    # uID: int, user id (unique)
-    # items: torch.Tensor, movie ids (unique) which reviewed by the user, sorted by timestamp in ascending order
-    # ratings: torch.Tensor, normalized ratings of the movies reviewed by the user, 
-    #          sorted by timestamp in ascending order
-    # ratings_togo: torch.Tensor, cumulative normalized ratings, 
-    #               sorted by timestamp in ascending order
-    # time: torch.Tensor, timestamps of the movies reviewed by the user, 
-    #                     sorted by timestamp in ascending order
-    # items/ratings/times are padded with 0 to match the length of the largest user
-    uID, items, ratings, ratings_togo, time = user_dataset[0]
-
-    """
-    3. Import Dataset object into a torch Dataloader
-    """
-    from torch.utils.data import DataLoader
-
-    # In order to get data in batches, we can import our dataset into a torch dataloader
-    train_loader = DataLoader(
-        user_dataset, batch_size=32, shuffle=True, num_workers=16)
-
-    # Here is an example of how you can use the dataloader
-    for i, batch in enumerate(train_loader):
-        if i < 3:
-            uID, items, ratings, ratings_togo, time = batch
-            print(f"User ID: {uID}")
-            print(
-                f"user_movies: {items.size()}, # movies: {(items>=0).sum()}")
-            print(items)
-            print()
-            print(
-                f"user_ratings: {ratings.size()}, # ratings: {(ratings>=0).sum()}")
-            print(ratings)
-            print()
-            print(
-                f"user_ratings_togo: {ratings_togo.size()}, # ratings_togo: {(ratings_togo>=0).sum()}")
-            print(ratings_togo)
-            print()
-            print(
-                f"user_timestamps: {time.size()}, # timestamps: {(time>=0).sum()}")
-            print(time)
-            print()
-        else:
-            break
+        return uID, items, ratings, ratings_togo, time, solution
