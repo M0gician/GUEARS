@@ -116,6 +116,9 @@ class UserDataset(torch.utils.data.Dataset):
         if load_full:
             return self.rating_interactions.to_dense()
         return self.rating_interactions
+    
+    def get_test_ratings(self, load_full=False) -> torch.Tensor:
+        return self.test_rating_interactions
 
     def get_timestamps(self, load_full=False) -> torch.Tensor:
         if load_full:
