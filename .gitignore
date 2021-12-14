@@ -6,9 +6,6 @@
 *.ipynb
 .ipynb_checkpoints
 
-# Checkpoints
-*.pt
-
 # IPython
 profile_default/
 ipython_config.py
