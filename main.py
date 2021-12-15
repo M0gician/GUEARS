@@ -3,10 +3,12 @@ import torch.nn as nn
 import torch.optim as optim
 from models.decision_transformer import DecisionTransformer
 from torch.utils.data import DataLoader
-from datasets.dataloader import UserDataset
-from training import Trainer
+from src.datasets.dataloader import UserDataset
+from training import ModelTrainer, FCTrainer
+from models.FullyConnected import FullyConnected
 
-def train(user_dataset):
+def train():
+    user_dataset = UserDataset(mode='train')
     # prepare args
     state_dim = 512
     action_dim = 512
@@ -52,7 +54,7 @@ def train(user_dataset):
         "item_embeds_params": "checkpoints/item.pt",
         "pretrained": False
     }
-    trainer = Trainer(train_loader, model, user_embedding, item_embedding, optimizer, device, args)
+    trainer = ModelTrainer(train_loader, model, user_embedding, item_embedding, optimizer, device, args)
 
 
     """input_state = torch.randn([64, 333, state_dim])
@@ -71,10 +73,34 @@ def train(user_dataset):
         loss = trainer.train_epoch()
         print(f"Epoch: {epoch+1} Loss: {loss}")
 
+    """
+    Train fully connected to evaluate our embeddings
+    """
+    fc_args = {
+        "user_count": user_count,
+        "item_count": item_count,
+        "device": device
+    }
+    fc_epochs = 10
+    fc_lr = 1e-4
+    K = 5
+    fc_model = FullyConnected(state_dim, item_count).to(device)
+    fc_optimizer = optim.Adam(fc_model.parameters(), lr=fc_lr)
+    fc_trainer = FCTrainer(fc_model, fc_optimizer, user_embedding, fc_args)
+    fc_dataset = UserDataset(mode='train')
+
+    for epoch in range(fc_epochs):
+        loss = fc_trainer.train(fc_dataset.get_ratings(load_full=True).to(device))
+        print(f"Epoch: {epoch+1} Loss: {loss}")
+
+    """
+    Get topK from current user
+    """
+    topK = fc_trainer.test(UserDataset(mode='test').get_test_ratings(load_full=True).to(device), K=K)
+    return topK
 
 def main():
-    user_dataset = UserDataset()
-    train(user_dataset)
+    train()
 
 
 if __name__ == '__main__':

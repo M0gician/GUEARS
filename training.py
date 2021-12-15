@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-class Trainer:
+class ModelTrainer:
     def __init__(self, data, model, user_embedding, item_embedding, optimizer, device, args):
         self.data = data
         self.model = model
@@ -19,7 +19,7 @@ class Trainer:
         loss_total = 0
         for i, train_batch in enumerate(self.data):
             # unpack data
-            user_ids, item_ids, rewards, rtg, timesteps = train_batch
+            user_ids, item_ids, rewards, rtg, timesteps, _ = train_batch
             user_ids = user_ids.to(self.device)
             item_ids = item_ids.to(self.device)
             rewards = rewards.to(self.device)
@@ -35,6 +35,7 @@ class Trainer:
             timesteps = torch.arange(0, 737).unsqueeze(0).repeat(item_ids.shape[0], 1)
             attention_mask = torch.ones_like(rewards).squeeze()
 
+            # truncate sequence length to max length
             states = states[:, :341].to(self.device)
             actions = actions[:, :341].to(self.device)
             rewards = rewards[:, :341].to(self.device)
@@ -101,3 +102,37 @@ class Trainer:
         item_embeds_path = self.args['item_embeds_params']
         with open(item_embeds_path, 'r') as f:
             self.item_embedding.load_state_dict(torch.load(f))
+
+class FCTrainer:
+    def __init__(self, model, optimizer, trained_user_embedding, args):
+        self.model = model
+        self.user_embedding = trained_user_embedding
+        self.optimizer = optimizer
+        self.loss_fn = nn.SmoothL1Loss()
+        self.device = args['device']
+
+        self.args = args
+
+    def train(self, ground_truth):
+        all_embedding_vectors = self.user_embedding(torch.arange(0, self.args['user_count']).to(self.device))
+        pred = self.model(all_embedding_vectors)
+        loss = self.loss_fn(ground_truth, pred)
+
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
+        return loss.item()
+
+    def test(self, ground_truth, K):
+        all_embedding_vectors = self.user_embedding(torch.arange(0, self.args['user_count']).to(self.device))
+        pred = self.model(all_embedding_vectors)
+
+        # first extract non-zero index in ground truth
+        pred = pred * (ground_truth > 0)
+
+        # extract top K items in pred
+        topK = torch.topk(pred, K, dim=1) # values and indices
+        # print(topK.values.shape)
+
+        return topK
