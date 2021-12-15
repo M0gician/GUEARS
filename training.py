@@ -126,7 +126,8 @@ class FCTrainer:
         return loss.item()
 
     def test(self):
-        return self.user_embedding(torch.arange(0, self.args['user_count']).to(self.device))
+        all_embedding_vectors = self.user_embedding(torch.arange(0, self.args['user_count']).to(self.device))
+        return self.model(all_embedding_vectors)
 
     def save_model(self):
         model_path = self.args['fc_model_params']
