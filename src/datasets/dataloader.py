@@ -4,6 +4,8 @@ import torch.nn.functional as F
 from collections import defaultdict
 
 MOVIELENS_PATH = "ml-100k/"
+USER_SIZE = 943
+ITEM_SIZE = 1682
 
 
 class UserDataset(torch.utils.data.Dataset):
@@ -47,20 +49,21 @@ class UserDataset(torch.utils.data.Dataset):
             self.test_timestamps = torch.load(os.path.join(self.path, "b_testtimestamps.pt"))
 
         self.idx = torch.stack((self.users, self.items), axis=0)
-        self.numUsers, self.numItems = int(
-            torch.max(self.users))+1, int(torch.max(self.items))+1
+        # self.numUsers, self.numItems = int(
+        #     torch.max(self.users))+1, int(torch.max(self.items))+1
+        self.numUsers, self.numItems = USER_SIZE, ITEM_SIZE
         self.test_idx = torch.stack((self.test_users, self.test_items), axis=0)
         self.test_numUsers, self.test_numItems = int(
             torch.max(self.test_users))+1, int(torch.max(self.test_items))+1
 
         self.rating_interactions = self.vec_to_sparse(
             self.users, self.items, self.ratings,
-            size=(max(self.numUsers, self.test_numUsers), max(self.numItems, self.test_numItems)),
+            size=(USER_SIZE, ITEM_SIZE),
             load_full=False,
         )
         self.time_interactions = self.vec_to_sparse(
             self.users, self.items, self.timestamps,
-            size=(max(self.numUsers, self.test_numUsers), max(self.numItems, self.test_numItems)),
+            size=(USER_SIZE, ITEM_SIZE),
             load_full=False,
         )
 
@@ -100,12 +103,12 @@ class UserDataset(torch.utils.data.Dataset):
 
         self.test_rating_interactions = self.vec_to_sparse(
             self.test_users, self.test_items, self.test_ratings,
-            size=(max(self.numUsers, self.test_numUsers), max(self.numItems, self.test_numItems)),
+            size=(USER_SIZE, ITEM_SIZE),
             load_full=True,
         )
         self.test_time_interactions = self.vec_to_sparse(
             self.test_users, self.test_items, self.test_timestamps,
-            size=(max(self.numUsers, self.test_numUsers), max(self.numItems, self.test_numItems)),
+            size=(USER_SIZE, ITEM_SIZE),
             load_full=False,
         )
 
