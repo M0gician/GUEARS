@@ -110,8 +110,9 @@ class FCTrainer:
         self.optimizer = optimizer
         self.loss_fn = nn.SmoothL1Loss()
         self.device = args['device']
-
         self.args = args
+        if args['pretrained']:
+            self.load_model()
 
     def train(self, ground_truth):
         all_embedding_vectors = self.user_embedding(torch.arange(0, self.args['user_count']).to(self.device))
@@ -124,15 +125,14 @@ class FCTrainer:
 
         return loss.item()
 
-    def test(self, ground_truth, K):
-        all_embedding_vectors = self.user_embedding(torch.arange(0, self.args['user_count']).to(self.device))
-        pred = self.model(all_embedding_vectors)
+    def test(self):
+        return self.user_embedding(torch.arange(0, self.args['user_count']).to(self.device))
 
-        # first extract non-zero index in ground truth
-        pred = pred * (ground_truth > 0)
+    def save_model(self):
+        model_path = self.args['fc_model_params']
+        torch.save(self.model.state_dict(), model_path)
 
-        # extract top K items in pred
-        topK = torch.topk(pred, K, dim=1) # values and indices
-        # print(topK.values.shape)
-
-        return topK
+    def load_model(self):
+        model_path = self.args['fc_model_params']
+        with open(model_path, 'r') as f:
+            self.model.load_state_dict(torch.load(f))

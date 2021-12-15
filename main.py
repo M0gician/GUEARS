@@ -79,7 +79,9 @@ def train():
     fc_args = {
         "user_count": user_count,
         "item_count": item_count,
-        "device": device
+        "device": device,
+        "fc_model_params": "checkpoints/fc_model.pt",
+        "pretrained": False
     }
     fc_epochs = 10
     fc_lr = 1e-4
@@ -90,14 +92,16 @@ def train():
     fc_dataset = UserDataset(mode='train')
 
     for epoch in range(fc_epochs):
-        loss = fc_trainer.train(fc_dataset.get_ratings(load_full=True).to(device))
+        loss = fc_trainer.train(fc_dataset.get_test_ratings(load_full=True).to(device))
         print(f"Epoch: {epoch+1} Loss: {loss}")
 
+    fc_trainer.save_model()
+
     """
-    Get topK from current user
+    Get full history
     """
-    topK = fc_trainer.test(UserDataset(mode='test').get_test_ratings(load_full=True).to(device), K=K)
-    return topK
+    full_history = fc_trainer.test()
+    return full_history
 
 def main():
     train()
